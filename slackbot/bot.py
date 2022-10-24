@@ -11,12 +11,15 @@ from slackbot import settings
 from slackbot.manager import PluginsManager
 from slackbot.slackclient import SlackClient
 from slackbot.dispatcher import MessageDispatcher
+from slackbot.statemachine import StateMachine
 
 logger = logging.getLogger(__name__)
-
+state_machine = None
+_plugins = None
 
 class Bot(object):
     def __init__(self):
+        global state_machine, _plugins
         self._client = SlackClient(
             settings.API_TOKEN,
             timeout=settings.TIMEOUT if hasattr(settings,
@@ -29,6 +32,8 @@ class Bot(object):
         self._plugins = PluginsManager()
         self._dispatcher = MessageDispatcher(self._client, self._plugins,
                                              settings.ERRORS_TO)
+        state_machine = StateMachine(self._dispatcher, self._plugins)
+        _plugins = self._plugins
 
     def run(self):
         self._plugins.init_plugins()
@@ -49,7 +54,7 @@ class Bot(object):
 
 def respond_to(matchstr, flags=0):
     def wrapper(func):
-        PluginsManager.commands['respond_to'][
+        _plugins.commands['respond_to'][
             re.compile(matchstr, flags)] = func
         logger.info('registered respond_to plugin "%s" to "%s"', func.__name__,
                     matchstr)
@@ -60,7 +65,7 @@ def respond_to(matchstr, flags=0):
 
 def listen_to(matchstr, flags=0):
     def wrapper(func):
-        PluginsManager.commands['listen_to'][
+        _plugins.commands['listen_to'][
             re.compile(matchstr, flags)] = func
         logger.info('registered listen_to plugin "%s" to "%s"', func.__name__,
                     matchstr)
@@ -85,7 +90,7 @@ def default_reply(*args, **kwargs):
         func = args[0]
 
     def wrapper(func):
-        PluginsManager.commands['default_reply'][
+        _plugins.commands['default_reply'][
             re.compile(matchstr, flags)] = func
         logger.info('registered default_reply plugin "%s" to "%s"', func.__name__,
                     matchstr)

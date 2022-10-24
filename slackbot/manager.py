@@ -7,19 +7,19 @@ from six import PY2
 from importlib import import_module
 from slackbot import settings
 from slackbot.utils import to_utf8
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
 
 class PluginsManager(object):
     def __init__(self):
-        pass
-
-    commands = {
-        'respond_to': {},
-        'listen_to': {},
-        'default_reply': {}
-    }
+        self.new_commands = defaultdict(dict)
+        self.commands = {
+            'respond_to': {},
+            'listen_to': {},
+            'default_reply': {}
+        }
 
     def init_plugins(self):
         if hasattr(settings, 'PLUGINS'):
@@ -29,6 +29,22 @@ class PluginsManager(object):
 
         for plugin in plugins:
             self._load_plugins(plugin)
+
+    def add_command(self, category, matcher, func):
+        """Add a new plugin at runtime
+        Using add_command() allows code to add new plugins while the
+        PluginManager is iterating through the collection in get_plugins. This
+        avoids a "dictionary changed size during iteration" error.
+        """
+        #  type: (str, Any, callable) -> None
+        self.new_commands[category][matcher] = func
+
+    def update_commands(self):
+        for new_category in self.new_commands:
+            for new_matcher in self.new_commands[new_category]:
+                self.commands[new_category][new_matcher] = \
+                    self.new_commands[new_category][new_matcher]
+        self.new_commands = defaultdict(dict)
 
     def _load_plugins(self, plugin):
         logger.info('loading plugin "%s"', plugin)
@@ -74,3 +90,5 @@ class PluginsManager(object):
 
         if not has_matching_plugin:
             yield None, None
+
+        self.update_commands()
