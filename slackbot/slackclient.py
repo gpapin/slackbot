@@ -90,7 +90,7 @@ class SlackClient(object):
         proxy, proxy_port, no_proxy = get_http_proxy(os.environ)
 
         self.websocket = create_connection(self.login_data['url'], http_proxy_host=proxy,
-                                           http_proxy_port=proxy_port, http_no_proxy=no_proxy)
+                                           http_proxy_port=proxy_port, http_no_proxy=no_proxy, sslopt={"ca_cert_path": "/etc/ssl/certs/"})
 
         self.websocket.sock.setblocking(0)
 
